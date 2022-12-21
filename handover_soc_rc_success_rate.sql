@@ -13,6 +13,36 @@ case เปลี่ยนมาใช้ rank_num
 Run ทุกวัน 24.00
 */
 -- case 2 fm_recived
+/*
+arrang => fm_recived => soce
+จะแบ่งเป็น 2 ก้อน
+1.arrange pickup เท่าไหร่บ้าง แล้ว fm_recevied จิงๆมาเท่าไหร่
+    cutoff_recived คือ 21.00
+2.fm_recived ไปเท่าไหร่ แล้ว fm_ting ไปเท่าไหร่ ถ้าไม่มี fm_ting ก็จับเหมือนเดิมให้เป็น status อื่นๆ
+โดยอันนี้จะจับจาก hub โดยตรง
+    Universe FMHub_Received [D0] => cut_off คือ 23.59
+    FMHub_LHTransporting_ontime [D0] => 22.59
+    FMHub_Received [D0] => 21.59
+เวลาทั้งหทด 45 days
+case เปลี่ยนมาใช้ rank_num
+Run ทุกวัน 24.00
+*/
+-- case 2 fm_recived
+/*
+arrang => fm_recived => soce
+จะแบ่งเป็น 2 ก้อน
+1.arrange pickup เท่าไหร่บ้าง แล้ว fm_recevied จิงๆมาเท่าไหร่
+    cutoff_recived คือ 21.00
+2.fm_recived ไปเท่าไหร่ แล้ว fm_ting ไปเท่าไหร่ ถ้าไม่มี fm_ting ก็จับเหมือนเดิมให้เป็น status อื่นๆ
+โดยอันนี้จะจับจาก hub โดยตรง
+    Universe FMHub_Received [D0] => cut_off คือ 23.59
+    FMHub_LHTransporting_ontime [D0] => 22.59
+    FMHub_Received [D0] => 21.59
+เวลาทั้งหทด 45 days
+case เปลี่ยนมาใช้ rank_num
+Run ทุกวัน 24.00
+*/
+-- case 2 fm_recived
 with FMHub_Received as
 (
     select 
@@ -36,7 +66,14 @@ with FMHub_Received as
     where 
         rank_num = 1
         and status = 42
-        -- and station_name = 'FCPON - ชุมพร (U-402)'
+        and (split_part(station_name,' ',1) in ('FPHIT-A','FPHIT-B','FWTNG','FKPET','FTAKK','FMSOD','FNANN','FPJIT','FPBUN','FLOMS','FPRAE','FLOEI','FTHAI','FSWKL','FUTTA'
+                                                                ,'FSRPI','FCMAI-A','FCMAI-B','FSSAI','FMRIM','FDSKT','FCDAO','FFRNG','FSTNG','FDONG','FSANK','FPAAN','FCRAI','FMSAI','FMJUN','FPYAO','FLPNG','FLPUN'
+                                                                ,'FKRAT-A','FKRAT-B','FKRAT-C','FNSUG','FCOCH','FPAKC','FPIMY','FBUAY','FSKIU','FDKTD','FPTCI','FKNBR','FSNEN','FPHUK','FCYPM','FBRAM','FLPMT','FSTUK','FNRNG','FPKCI','FYASO','FSSKT','FSRIN','FSKPM','FPSAT','FUBON-A','FUBON-B','FWRIN','FDUDM'
+                                                                ,'FKKAN-B','FKKAN-A','FBPAI','FCPAE','FKLSN','FYTAD','FNKPN','FTPNM','FMKAM','FKSPS','FKTWC','FMDHN','FROET','FSKON','FNKAI','FPSAI','FUDON-A','FUDON-B'
+                                                                ,'FPPIN','FSMUI','FSRAT','FKDIT','FBNSN','FKRBI','FCPON','FPTIL','FSAWE','FTSNG','FCOUD','FNKSI','FTYAI','FTSLA','FSICN','FTLNG','FPHKT-A','FPHKT-B','FRNNG'
+                                                                ,'FHYAI-B','FHYAI-A','FSKLA','FSDAO','FTANG','FNARA','FPTNI','FKGPO','FMYOR','FYLNG','FPATL','FKUKN','FYALA','FRMAN','FSTUN'
+                                                                ,'FSWAN','FTAKI','FBPIN','FAYUT','FSENA','FAUTH','FWNOI','FLOPB','FKSRG','FCBDN','FPTNK','FKKOI','FSRBR','FBAMO','FPTBT','FPTBT','FNKAE','FSING','FTONG')
+        OR split_part(station_name,' ',1) like 'D%')
         -- and date_time = date('2022-12-14')
         and date_time between date(DATE_TRUNC('day', current_timestamp) - interval '45' day) and date(DATE_TRUNC('day', current_timestamp) - interval '1' day + interval '23' hour + interval '59' minute + interval '59' second )
     group by 
@@ -307,19 +344,23 @@ with FMHub_Received as
 select 
     FMHub_Received.date_time
     ,FMHub_Received.station_name
+    ,substring(split_part(FMHub_Received.station_name,' -',1),2,10) AS hub_name
     ,count(FMHub_Received.shipment_id) as total_FMHub_Received
-    ,count(FMHub_Received_ontime.shipment_id) as total_FMHub_Received_ontime
-    ,count(FMHub_Received_late.shipment_id) as total_FMHub_Received_late
+    ,count(FMHub_Received_ontime.shipment_id) as ontime_received_10pm
+    ,count(FMHub_Received_late.shipment_id) as late_received
     ,count(fmhub_lhtransporting_ontime.shipment_id) + count(fmhub_lhtransporting_late.shipment_id) as infull_fm_ting
-    ,count(fmhub_lhtransporting_ontime.shipment_id) as total_fm_ting_ontime
-    ,count(fmhub_lhtransporting_late.shipment_id) as total_fm_ting_late
+    ,count(fmhub_lhtransporting_ontime.shipment_id) as ontime_lhtransporting_11pm
+    ,count(fmhub_lhtransporting_late.shipment_id) as late_lhtransporting
     ,count(FMHub_Packing.shipment_id) as total_FMHub_Packing
     ,count(FMHub_Packed.shipment_id) as total_FMHub_Packed
     ,count(FMHub_LHPacked.shipment_id) as total_FMHub_LHPacked
     ,count(lost.shipment_id) as total_lost
     ,count(Damaged.shipment_id) as total_Damaged
     ,count(Return_all.shipment_id) as total_Return_all
-    ,count(FMHub_Received.shipment_id) - (count(fmhub_lhtransporting_ontime.shipment_id) + count(fmhub_lhtransporting_late.shipment_id)) as Hub_backlog
+    ,count(FMHub_Received.shipment_id) - (count(fmhub_lhtransporting_ontime.shipment_id) + count(fmhub_lhtransporting_late.shipment_id)) as hub_backlog
+    ,(CAST(count(fmhub_lhtransporting_ontime.shipment_id) AS DOUBLE) + CAST(count(fmhub_lhtransporting_late.shipment_id) AS DOUBLE)) / count(FMHub_Received.shipment_id) as "%infull_fm_ting"
+    ,CAST(count(fmhub_lhtransporting_ontime.shipment_id) AS DOUBLE) / count(FMHub_Received.shipment_id) as "%ontime_lhtransporting"
+    ,(CAST(count(FMHub_Received.shipment_id) AS DOUBLE) - (CAST(count(fmhub_lhtransporting_ontime.shipment_id) AS DOUBLE) + CAST(count(fmhub_lhtransporting_late.shipment_id) AS DOUBLE))) / count(FMHub_Received.shipment_id) as "%hub_backlog"
 from FMHub_Received
 left join FMHub_Received_ontime
 on FMHub_Received.shipment_id = FMHub_Received_ontime.shipment_id
